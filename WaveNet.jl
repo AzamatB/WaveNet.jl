@@ -2,9 +2,9 @@ using Flux
 using Flux: @functor
 using NamedTupleTools
 
-@views function gate(X::AbstractArray{<:Real,3})
-   split = size(X, 2) ÷ 2
-   tanh.(X[:, 1:split, :]) .* σ.(X[:, (split+1):end, :])
+@views function gate(x::AbstractArray{<:Real,3})
+   split = size(x, 2) ÷ 2
+   tanh.(x[:, 1:split, :]) .* σ.(x[:, (split+1):end, :])
 end
 
 struct ResBlock{T<:DenseArray{<:Real,3}, D, R, S, C}
@@ -51,26 +51,26 @@ conditional input ━━━> 1×1 condconv             1×1 skipconv
                                                       ┃
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━> + ━━━━━━━━> skip
 """
-function (m::ResBlock)(X::DenseArray{<:Real,3})
-   Y = gate(m.dilconv(X))
-   m.skip[] = m.skipconv(Y)
-   return X + m.resconv(Y)
+function (m::ResBlock)(x::DenseArray{<:Real,3})
+   y = gate(m.dilconv(x))
+   m.skip[] = m.skipconv(y)
+   return x + m.resconv(y)
 end
 
-function (m::ResBlock)((X, H)::NTuple{2,DenseArray{<:Real,3}})
-   Y = gate(m.dilconv(X) + m.condconv(H))
-   m.skip[] = m.skipconv(Y)
-   return (X + m.resconv(Y), H)
+function (m::ResBlock)((x, h)::NTuple{2,DenseArray{<:Real,3}})
+   y = gate(m.dilconv(x) + m.condconv(h))
+   m.skip[] = m.skipconv(y)
+   return (x + m.resconv(y), h)
 end
 
-function (m::LastBlock)(X::DenseArray{<:Real,3})
-   Y = gate(m.dilconv(X))
-   m.skip[] = m.skipconv(Y)
+function (m::LastBlock)(x::DenseArray{<:Real,3})
+   y = gate(m.dilconv(x))
+   m.skip[] = m.skipconv(y)
 end
 
-function (m::LastBlock)((X, H)::NTuple{2,DenseArray{<:Real,3}})
-   Y = gate(m.dilconv(X) + m.condconv(H))
-   m.skip[] = m.skipconv(Y)
+function (m::LastBlock)((x, h)::NTuple{2,DenseArray{<:Real,3}})
+   y = gate(m.dilconv(x) + m.condconv(h))
+   m.skip[] = m.skipconv(y)
 end
 
 skip(m::ResBlock)  = m.skip[]
@@ -103,7 +103,7 @@ function WaveNet(nlayers::Integer,
    WaveNet(inputnet, resnet!, outputnet)
 end
 
-function (m::WaveNet)(X::DenseArray{<:Real,3}, H::DenseArray{<:Real,3})
-   m.resnet!((m.inputnet(X), H))
+function (m::WaveNet)(x::DenseArray{<:Real,3}, h::DenseArray{<:Real,3})
+   m.resnet!((m.inputnet(x), h))
    m.outputnet(leakyrelu.(sum(skip, m.resnet!)))
 end
