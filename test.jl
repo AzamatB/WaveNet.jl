@@ -11,10 +11,10 @@ m((skip₀, x))
 m((skip₀, x, h))
 
 gradient(θ) do
-   sum(m((skip₀, x))[1] .* 1) + sum(m((skip₀, x))[2] .* 1)
+   sum(m((skip₀, x))[1]) + sum(m((skip₀, x))[2])
 end
 gradient(θ) do
-   sum(m((skip₀, x, h))[1] .* 1) + sum(m((skip₀, x, h))[2] .* 1) + sum(m((skip₀, x, h))[3] .* 1)
+   sum(m((skip₀, x, h))[1]) + sum(m((skip₀, x, h))[2]) + sum(m((skip₀, x, h))[3])
 end
 
 
@@ -28,8 +28,8 @@ h = rand(Float32, len, nch.cond, batch)
 m(x)
 m(x, h)
 gradient(θ) do
-   sum(m(x) .* 1)
+   sum(m(x))
 end
 gradient(θ) do
-   sum(m(x, h) .* 1)
+   sum(m(x, h))
 end

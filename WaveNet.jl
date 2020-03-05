@@ -38,6 +38,37 @@ function LastBlock(dilation::Integer, nch::NamedTuple{(:res, :skip, :cond),<:NTu
    LastBlock(dilconv, skipconv, condconv)
 end
 
+function Base.show(io::IO, block::ResBlock)
+   dc, rc, sc, cc = block.dilconv, block.resconv, block.skipconv, block.condconv
+   dilation = first(dc.dilation)
+   _, res, skip = size(sc.weight)
+   cond = size(cc.weight, 2)
+   print(io,
+      """
+      ResBlock($dilation, (res=$res, skip=$skip, cond=$cond))
+      │  Dilated     $dc
+      │  Residual    $rc
+      │  Skip        $sc
+      └─ Conditional $cc
+      """
+   )
+end
+
+function Base.show(io::IO, block::LastBlock)
+   dc, sc, cc = block.dilconv, block.skipconv, block.condconv
+   dilation = first(dc.dilation)
+   _, res, skip = size(sc.weight)
+   cond = size(cc.weight, 2)
+   print(io,
+      """
+      LastBlock($dilation, (res=$res, skip=$skip, cond=$cond))
+      │  Dilated     $dc
+      │  Skip        $sc
+      └─ Conditional $cc
+      """
+   )
+end
+
 """                             residual connection
         ┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
         ┃                              ┏━━ tanh ━━┓                       ┃
@@ -71,11 +102,12 @@ struct WaveNet{I, R, O}
    inblock   :: I
    resblocks :: R
    outblock  :: O
+   depth     :: Int
 end
 
 @functor WaveNet
 
-function WaveNet(nlayers::Integer,
+function WaveNet(nlayers::Integer = 30,
       nch::NamedTuple{(:res, :skip, :cond, :out),<:NTuple{4,Integer}} = (res=64, skip=256, cond=0, out=256); depth::Integer = 10
    )
    nch′ = delete(nch, :out)
@@ -91,7 +123,16 @@ function WaveNet(nlayers::Integer,
       Conv((1,), nch.out => nch.out),
       softmax
    ) |> gpu
-   WaveNet(inblock, resblocks, outblock)
+   WaveNet(inblock, resblocks, outblock, depth)
+end
+
+function Base.show(io::IO, m::WaveNet)
+   nlayers = length(m.resblocks)
+   depth = m.depth
+   res = length(m.inblock.bias)
+   cond = size(first(m.resblocks).condconv.weight, 2)
+   _, skip, out = size(first(m.outblock).weight)
+   print(io, "WaveNet($nlayers, (res=$res, skip=$skip, cond=$cond, out=$out); depth=$depth)")
 end
 
 function (m::WaveNet)(x::DenseArray{<:Real,3})
